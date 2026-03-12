@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Калькулятор</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1220;
+        --panel: #111a2e;
+        --key: #172445;
+        --key2: #1e2e59;
+        --accent: #3b82f6;
+        --danger: #ef4444;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --radius: 14px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(1200px 800px at 20% 10%, #16234a 0%, var(--bg) 55%);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        padding: 18px;
+      }
+
+      .calc {
+        width: min(380px, 100%);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        border-radius: var(--radius);
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+        overflow: hidden;
+      }
+
+      .header {
+        padding: 14px 16px 10px;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+        background: rgba(17, 26, 46, 0.55);
+      }
+
+      .title {
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .display {
+        padding: 18px 16px 14px;
+        background: rgba(17, 26, 46, 0.55);
+      }
+
+      #display {
+        width: 100%;
+        min-height: 64px;
+        padding: 14px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: rgba(11, 18, 32, 0.75);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        font-variant-numeric: tabular-nums;
+        font-size: 34px;
+        line-height: 1.1;
+        overflow: hidden;
+        word-break: break-all;
+      }
+
+      .subline {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      #expr {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 75%;
+      }
+
+      .keys {
+        padding: 14px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        background: rgba(11, 18, 32, 0.35);
+      }
+
+      button.key {
+        appearance: none;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: linear-gradient(180deg, rgba(23, 36, 69, 0.95), rgba(23, 36, 69, 0.75));
+        color: var(--text);
+        border-radius: 12px;
+        padding: 14px 12px;
+        font-size: 18px;
+        font-weight: 650;
+        line-height: 1;
+        cursor: pointer;
+        user-select: none;
+        transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+        min-height: 52px;
+      }
+
+      button.key:hover {
+        border-color: rgba(148, 163, 184, 0.4);
+        background: linear-gradient(180deg, rgba(30, 46, 89, 0.98), rgba(30, 46, 89, 0.78));
+      }
+
+      button.key:active {
+        transform: translateY(1px);
+      }
+
+      button.key:focus-visible {
+        outline: 2px solid rgba(59, 130, 246, 0.65);
+        outline-offset: 2px;
+      }
+
+      button.op {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.35), rgba(23, 36, 69, 0.75));
+        border-color: rgba(59, 130, 246, 0.5);
+      }
+
+      button.op:hover {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.5), rgba(30, 46, 89, 0.78));
+      }
+
+      button.eq {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.8));
+        border-color: rgba(96, 165, 250, 0.65);
+      }
+
+      button.eq:hover {
+        background: linear-gradient(180deg, rgba(96, 165, 250, 0.95), rgba(37, 99, 235, 0.86));
+      }
+
+      button.clear {
+        background: linear-gradient(180deg, rgba(239, 68, 68, 0.55), rgba(23, 36, 69, 0.75));
+        border-color: rgba(239, 68, 68, 0.55);
+      }
+
+      button.clear:hover {
+        background: linear-gradient(180deg, rgba(239, 68, 68, 0.7), rgba(30, 46, 89, 0.78));
+      }
+
+      button.span2 {
+        grid-column: span 2;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="calc" aria-label="Калькулятор">
+      <div class="header">
+        <div class="title">Калькулятор</div>
+        <div class="hint">Клики мышью или клавиатура</div>
+      </div>
+
+      <section class="display" aria-label="Дисплей">
+        <div id="display" role="status" aria-live="polite">0</div>
+        <div class="subline">
+          <div id="expr" aria-label="Выражение"></div>
+          <div id="status" aria-label="Статус"></div>
+        </div>
+      </section>
+
+      <section class="keys" aria-label="Кнопки">
+        <button class="key clear" data-action="clear" type="button">C</button>
+        <button class="key op" data-action="toggle-angle" type="button">RAD</button>
+        <button class="key op" data-action="sqrt" type="button">√</button>
+        <button class="key op" data-op="/" type="button">/</button>
+        <button class="key op" data-op="*" type="button">*</button>
+        <button class="key op" data-op="-" type="button">-</button>
+
+        <button class="key op" data-action="const-pi" type="button">π</button>
+        <button class="key op" data-action="const-e" type="button">e</button>
+        <button class="key" data-digit="7" type="button">7</button>
+        <button class="key" data-digit="8" type="button">8</button>
+        <button class="key" data-digit="9" type="button">9</button>
+        <button class="key op" data-op="+" type="button">+</button>
+
+        <button class="key op" data-action="sin" type="button">sin</button>
+        <button class="key op" data-action="cos" type="button">cos</button>
+        <button class="key op" data-action="tan" type="button">tan</button>
+        <button class="key" data-digit="4" type="button">4</button>
+        <button class="key" data-digit="5" type="button">5</button>
+        <button class="key" data-digit="6" type="button">6</button>
+        <button class="key eq" data-action="equals" type="button">=</button>
+
+        <button class="key" data-digit="1" type="button">1</button>
+        <button class="key" data-digit="2" type="button">2</button>
+        <button class="key" data-digit="3" type="button">3</button>
+        <button class="key span2" data-digit="0" type="button">0</button>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const displayEl = document.getElementById("display");
+        const exprEl = document.getElementById("expr");
+        const statusEl = document.getElementById("status");
+        const keysRoot = document.querySelector(".keys");
+
+        const isOp = (v) => v === "+" || v === "-" || v === "*" || v === "/";
+        const toNumber = (s) => Number(s);
+
+        const state = {
+          left: null,
+          op: null,
+          input: "0",
+          justEvaluated: false,
+          error: null,
+          angleMode: "RAD",
+        };
+
+        function setStatus(text) {
+          statusEl.textContent = text || "";
+        }
+
+        function setError(message) {
+          state.error = message || "Ошибка";
+          displayEl.textContent = "Ошибка";
+          setStatus(state.error);
+        }
+
+        function clearAll() {
+          state.left = null;
+          state.op = null;
+          state.input = "0";
+          state.justEvaluated = false;
+          state.error = null;
+          render();
+        }
+
+        function render() {
+          if (state.error) {
+            displayEl.textContent = "Ошибка";
+            exprEl.textContent = "";
+            setStatus(state.error);
+            return;
+          }
+
+          displayEl.textContent = state.input;
+          const exprParts = [];
+          if (state.left !== null) exprParts.push(String(state.left));
+          if (state.op) exprParts.push(state.op);
+          exprEl.textContent = exprParts.join(" ");
+          setStatus(state.angleMode);
+        }
+
+        function appendDigit(d) {
+          if (state.error) clearAll();
+
+          if (state.justEvaluated && !state.op) {
+            state.input = "0";
+            state.left = null;
+            state.justEvaluated = false;
+          }
+
+          if (state.input === "0") state.input = d;
+          else state.input += d;
+          render();
+        }
+
+        function compute(a, op, b) {
+          if (op === "+") return a + b;
+          if (op === "-") return a - b;
+          if (op === "*") return a * b;
+          if (op === "/") {
+            if (b === 0) return null;
+            return a / b;
+          }
+          return null;
+        }
+
+        function sqrtCurrent() {
+          if (state.error) clearAll();
+
+          const current = toNumber(state.input);
+          if (!Number.isFinite(current)) {
+            setError("Некорректное число");
+            return;
+          }
+          if (current < 0) {
+            setError("Корень из отрицательного");
+            return;
+          }
+
+          const result = Math.sqrt(current);
+          if (!Number.isFinite(result)) {
+            setError("Ошибка вычисления");
+            return;
+          }
+
+          state.input = String(result);
+          state.justEvaluated = false;
+          render();
+        }
+
+        function setInputValue(value) {
+          if (!Number.isFinite(value)) {
+            setError("Ошибка вычисления");
+            return;
+          }
+          state.error = null;
+          state.input = String(value);
+          state.justEvaluated = false;
+          render();
+        }
+
+        function toRadians(x) {
+          return state.angleMode === "DEG" ? (x * Math.PI) / 180 : x;
+        }
+
+        function trig(fnName) {
+          if (state.error) clearAll();
+
+          const current = toNumber(state.input);
+          if (!Number.isFinite(current)) {
+            setError("Некорректное число");
+            return;
+          }
+
+          const r = toRadians(current);
+          let result = null;
+          if (fnName === "sin") result = Math.sin(r);
+          else if (fnName === "cos") result = Math.cos(r);
+          else if (fnName === "tan") result = Math.tan(r);
+
+          if (result === null || !Number.isFinite(result)) {
+            setError("Ошибка вычисления");
+            return;
+          }
+
+          setInputValue(result);
+        }
+
+        function toggleAngleMode() {
+          state.angleMode = state.angleMode === "RAD" ? "DEG" : "RAD";
+          render();
+        }
+
+        function chooseOp(nextOp) {
+          if (state.error) clearAll();
+
+          const current = toNumber(state.input);
+          if (!Number.isFinite(current)) {
+            setError("Некорректное число");
+            return;
+          }
+
+          if (state.left === null) {
+            state.left = current;
+            state.op = nextOp;
+            state.input = "0";
+            state.justEvaluated = false;
+            render();
+            return;
+          }
+
+          if (state.op) {
+            const result = compute(state.left, state.op, current);
+            if (result === null || !Number.isFinite(result)) {
+              setError(state.op === "/" ? "Деление на 0" : "Ошибка вычисления");
+              return;
+            }
+            state.left = result;
+            state.op = nextOp;
+            state.input = "0";
+            state.justEvaluated = false;
+            render();
+            return;
+          }
+
+          state.op = nextOp;
+          state.input = "0";
+          state.justEvaluated = false;
+          render();
+        }
+
+        function equals() {
+          if (state.error) {
+            clearAll();
+            return;
+          }
+          if (state.left === null || !state.op) return;
+
+          const right = toNumber(state.input);
+          if (!Number.isFinite(right)) {
+            setError("Некорректное число");
+            return;
+          }
+
+          const result = compute(state.left, state.op, right);
+          if (result === null || !Number.isFinite(result)) {
+            setError(state.op === "/" ? "Деление на 0" : "Ошибка вычисления");
+            return;
+          }
+
+          state.left = null;
+          state.op = null;
+          state.input = String(result);
+          state.justEvaluated = true;
+          render();
+        }
+
+        keysRoot.addEventListener("click", (e) => {
+          const btn = e.target.closest("button");
+          if (!btn) return;
+
+          const digit = btn.getAttribute("data-digit");
+          const op = btn.getAttribute("data-op");
+          const action = btn.getAttribute("data-action");
+
+          if (digit !== null) appendDigit(digit);
+          else if (op) chooseOp(op);
+          else if (action === "equals") equals();
+          else if (action === "clear") clearAll();
+          else if (action === "sqrt") sqrtCurrent();
+          else if (action === "const-pi") setInputValue(Math.PI);
+          else if (action === "const-e") setInputValue(Math.E);
+          else if (action === "sin") trig("sin");
+          else if (action === "cos") trig("cos");
+          else if (action === "tan") trig("tan");
+          else if (action === "toggle-angle") toggleAngleMode();
+        });
+
+        window.addEventListener("keydown", (e) => {
+          const k = e.key;
+          if (k >= "0" && k <= "9") {
+            e.preventDefault();
+            appendDigit(k);
+            return;
+          }
+          if (isOp(k)) {
+            e.preventDefault();
+            chooseOp(k);
+            return;
+          }
+          if (k === "Enter" || k === "=") {
+            e.preventDefault();
+            equals();
+            return;
+          }
+          if (k === "Escape" || k === "c" || k === "C") {
+            e.preventDefault();
+            clearAll();
+            return;
+          }
+          if (k === "r" || k === "R" || k === "√") {
+            e.preventDefault();
+            sqrtCurrent();
+            return;
+          }
+          if (k === "p" || k === "P") {
+            e.preventDefault();
+            setInputValue(Math.PI);
+            return;
+          }
+          if (k === "e") {
+            e.preventDefault();
+            setInputValue(Math.E);
+            return;
+          }
+          if (k === "s" || k === "S") {
+            e.preventDefault();
+            trig("sin");
+            return;
+          }
+          if (k === "o" || k === "O") {
+            e.preventDefault();
+            trig("cos");
+            return;
+          }
+          if (k === "t" || k === "T") {
+            e.preventDefault();
+            trig("tan");
+            return;
+          }
+          if (k === "d" || k === "D") {
+            e.preventDefault();
+            toggleAngleMode();
+          }
+        });
+
+        clearAll();
+      })();
+    </script>
+  </body>
+</html>
+
