@@ -39,6 +39,21 @@
         image-rendering: pixelated;
         position: relative;
         overflow: hidden;
+        cursor: crosshair;
+      }
+
+      body.theme-light {
+        --bg: #f4f4f4;
+        --panel: #f0e4ff;
+        --panel-border-light: #ffffff;
+        --panel-border-dark: #000000;
+        --key-face: #ffffff;
+        --key-face-op: #ffe4a0;
+        --key-face-eq: #a0ffd0;
+        --key-face-danger: #ffb0b0;
+        --text-main: #000000;
+        --text-screen: #004020;
+        --text-muted: #555555;
       }
 
       .ui-layer {
@@ -53,6 +68,10 @@
         height: 100%;
         z-index: 0;
         background: radial-gradient(circle at top, #001000 0, #000000 60%);
+      }
+
+      body.theme-light .matrix-canvas {
+        background: radial-gradient(circle at top, #f4fff4 0, #e4f0e4 60%);
       }
 
       .matrix-fade {
@@ -238,6 +257,7 @@
         <section class="keys" aria-label="Кнопки">
           <button class="key clear" data-action="clear" type="button">C</button>
           <button class="key op" data-action="toggle-angle" type="button">RAD</button>
+          <button class="key op" data-action="toggle-theme" type="button">L/D</button>
           <button class="key op" data-action="sqrt" type="button">√</button>
           <button class="key op" data-op="/" type="button">/</button>
           <button class="key op" data-op="*" type="button">*</button>
@@ -262,6 +282,8 @@
           <button class="key" data-digit="2" type="button">2</button>
           <button class="key" data-digit="3" type="button">3</button>
           <button class="key span2" data-digit="0" type="button">0</button>
+          <button class="key op" data-action="rick" type="button">rick</button>
+          <button class="key op" data-action="toggle-dino" type="button">🦖</button>
         </section>
       </main>
     </div>
@@ -291,10 +313,14 @@
         }
 
         function draw() {
-          ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+          const isLight = document.body.classList.contains("theme-light");
+          const trail = isLight ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.15)";
+          const symbolColor = isLight ? "#ffffff" : "#60ff80";
+
+          ctx.fillStyle = trail;
           ctx.fillRect(0, 0, width, height);
 
-          ctx.fillStyle = "#60ff80";
+          ctx.fillStyle = symbolColor;
           ctx.font = fontSize + 'px "Courier New", monospace';
 
           for (let i = 0; i < columns; i++) {
@@ -324,6 +350,7 @@
         const exprEl = document.getElementById("expr");
         const statusEl = document.getElementById("status");
         const keysRoot = document.querySelector(".keys");
+        const bodyEl = document.body;
 
         const isOp = (v) => v === "+" || v === "-" || v === "*" || v === "/";
         const toNumber = (s) => Number(s);
@@ -336,6 +363,12 @@
           error: null,
           angleMode: "RAD",
         };
+
+        let dinoActive = false;
+        let dinoCanvas = null;
+        let dinoCtx = null;
+        let dinoAnimId = null;
+        let dinoState = null;
 
         function setStatus(text) {
           statusEl.textContent = text || "";
@@ -357,6 +390,10 @@
         }
 
         function render() {
+          if (dinoActive) {
+            setStatus(state.angleMode + " | GAME");
+            return;
+          }
           if (state.error) {
             displayEl.textContent = "Ошибка";
             exprEl.textContent = "";
@@ -370,6 +407,167 @@
           if (state.op) exprParts.push(state.op);
           exprEl.textContent = exprParts.join(" ");
           setStatus(state.angleMode);
+        }
+
+        function initDinoCanvas() {
+          if (dinoCanvas) return;
+          dinoCanvas = document.createElement("canvas");
+          dinoCanvas.setAttribute("aria-label", "Игра динозавр");
+          dinoCanvas.style.width = "100%";
+          dinoCanvas.style.height = "100%";
+          dinoCtx = dinoCanvas.getContext("2d");
+        }
+
+        function startDinoGame() {
+          if (dinoActive) return;
+          dinoActive = true;
+          if (!dinoCanvas) initDinoCanvas();
+
+          displayEl.textContent = "";
+          if (!displayEl.contains(dinoCanvas)) {
+            displayEl.appendChild(dinoCanvas);
+          }
+
+          const rect = displayEl.getBoundingClientRect();
+          const w = (dinoCanvas.width = Math.max(260, Math.floor(rect.width)));
+          const h = (dinoCanvas.height = Math.max(60, Math.floor(rect.height)));
+
+          const groundY = h - 10;
+
+          dinoState = {
+            dinoX: 24,
+            dinoY: groundY - 18,
+            dinoW: 16,
+            dinoH: 18,
+            vy: 0,
+            gravity: 0.5,
+            jumpStrength: -9,
+            groundY,
+            obstacles: [],
+            speed: 4,
+            score: 0,
+            lastSpawn: 0,
+            lastTime: 0,
+          };
+
+          function loop(timestamp) {
+            if (!dinoActive || !dinoCtx) return;
+
+            if (!dinoState.lastTime) dinoState.lastTime = timestamp;
+            const dt = Math.min(40, timestamp - dinoState.lastTime);
+            dinoState.lastTime = timestamp;
+
+            const isLight = bodyEl.classList.contains("theme-light");
+            const bg = isLight ? "#f4fff4" : "#001000";
+            const groundColor = isLight ? "#c0d0c0" : "#0aff40";
+            const dinoColor = isLight ? "#202020" : "#ffffff";
+            const cactusColor = isLight ? "#206020" : "#00ff66";
+            const scoreColor = isLight ? "#202020" : "#ffffff";
+
+            dinoCtx.fillStyle = bg;
+            dinoCtx.fillRect(0, 0, w, h);
+
+            dinoCtx.fillStyle = groundColor;
+            dinoCtx.fillRect(0, dinoState.groundY, w, 2);
+
+            dinoState.vy += dinoState.gravity * (dt / 16);
+            dinoState.dinoY += dinoState.vy;
+            if (dinoState.dinoY >= dinoState.groundY - dinoState.dinoH) {
+              dinoState.dinoY = dinoState.groundY - dinoState.dinoH;
+              dinoState.vy = 0;
+            }
+
+            dinoState.lastSpawn += dt;
+            if (dinoState.lastSpawn > 900 + Math.random() * 700) {
+              dinoState.obstacles.push({
+                x: w + 10,
+                y: dinoState.groundY - 16,
+                w: 10,
+                h: 16,
+              });
+              dinoState.lastSpawn = 0;
+            }
+
+            const dx = dinoState.speed * (dt / 16);
+            dinoState.obstacles.forEach((o) => {
+              o.x -= dx;
+            });
+            dinoState.obstacles = dinoState.obstacles.filter((o) => o.x + o.w > 0);
+
+            dinoState.obstacles.forEach((o) => {
+              const collide =
+                dinoState.dinoX < o.x + o.w &&
+                dinoState.dinoX + dinoState.dinoW > o.x &&
+                dinoState.dinoY < o.y + o.h &&
+                dinoState.dinoY + dinoState.dinoH > o.y;
+              if (collide) {
+                dinoState.obstacles = [];
+                dinoState.score = 0;
+                dinoState.dinoY = dinoState.groundY - dinoState.dinoH;
+                dinoState.vy = 0;
+              }
+            });
+
+            dinoState.score += dt * 0.01;
+
+            dinoCtx.fillStyle = cactusColor;
+            dinoState.obstacles.forEach((o) => {
+              dinoCtx.fillRect(o.x, o.y, o.w, o.h);
+              dinoCtx.fillRect(o.x + 2, o.y - 6, 6, 6);
+            });
+
+            dinoCtx.fillStyle = dinoColor;
+            dinoCtx.fillRect(
+              dinoState.dinoX,
+              dinoState.dinoY,
+              dinoState.dinoW,
+              dinoState.dinoH
+            );
+            dinoCtx.fillRect(
+              dinoState.dinoX,
+              dinoState.dinoY - 6,
+              Math.floor(dinoState.dinoW * 0.7),
+              6
+            );
+
+            dinoCtx.fillStyle = scoreColor;
+            dinoCtx.font = "10px 'Courier New', monospace";
+            dinoCtx.fillText("SCORE " + Math.floor(dinoState.score), 8, 14);
+
+            dinoAnimId = requestAnimationFrame(loop);
+          }
+
+          dinoAnimId = requestAnimationFrame(loop);
+          setStatus(state.angleMode + " | GAME");
+        }
+
+        function stopDinoGame() {
+          if (!dinoActive) return;
+          dinoActive = false;
+          if (dinoAnimId) {
+            cancelAnimationFrame(dinoAnimId);
+            dinoAnimId = null;
+          }
+          if (dinoCanvas && displayEl.contains(dinoCanvas)) {
+            displayEl.removeChild(dinoCanvas);
+          }
+          dinoState = null;
+          displayEl.textContent = state.input;
+          render();
+        }
+
+        function toggleDinoGame() {
+          if (dinoActive) stopDinoGame();
+          else startDinoGame();
+        }
+
+        function dinoJump() {
+          if (!dinoActive || !dinoState) return;
+          const onGround =
+            dinoState.dinoY >= dinoState.groundY - dinoState.dinoH - 0.5;
+          if (onGround) {
+            dinoState.vy = dinoState.jumpStrength;
+          }
         }
 
         function appendDigit(d) {
@@ -547,10 +745,25 @@
           else if (action === "cos") trig("cos");
           else if (action === "tan") trig("tan");
           else if (action === "toggle-angle") toggleAngleMode();
+          else if (action === "rick")
+            window.open(
+              "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=RDdQw4w9WgXcQ&start_radio=1",
+              "_blank"
+            );
+          else if (action === "toggle-theme") {
+            bodyEl.classList.toggle("theme-light");
+          } else if (action === "toggle-dino") {
+            toggleDinoGame();
+          }
         });
 
         window.addEventListener("keydown", (e) => {
           const k = e.key;
+          if (dinoActive && (k === " " || k === "ArrowUp" || k === "w" || k === "W")) {
+            e.preventDefault();
+            dinoJump();
+            return;
+          }
           if (k >= "0" && k <= "9") {
             e.preventDefault();
             appendDigit(k);
